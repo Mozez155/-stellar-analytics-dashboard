@@ -10,6 +10,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import winston from 'winston';
+import { verify } from 'jsonwebtoken';
 import depthLimit from 'graphql-depth-limit';
 
 import { typeDefs } from './schema/typeDefs';
@@ -17,6 +18,11 @@ import { resolvers } from './resolvers';
 import { db } from './database/connection';
 import * as loaders from './loaders';
 import { RealtimePublisher } from './services/realtime-publisher';
+import { 
+  checkSubscriptionRateLimit, 
+  checkEventRateLimit, 
+  cleanupRateLimits 
+} from './pubsub';
 import { authService } from './services/auth';
 
 dotenv.config();
@@ -242,20 +248,55 @@ class ApiServer {
 
     const schema = (this.apolloServer as any).schema;
 
+    // Cleanup rate limits periodically
+    setInterval(cleanupRateLimits, 60000);
+
     useServer(
       {
         schema,
-        context: async () => ({
-          db,
-          loaders,
-          logger: this.logger,
-        }),
-        onConnect: () => {
-          this.logger.info('WebSocket client connected');
-          return true;
+        context: async (ctx: any, msg: any, args: any) => {
+          const connectionParams = ctx?.connectionParams || {};
+          const token = connectionParams?.token || msg?.payload?.headers?.authorization?.replace('Bearer ', '');
+          
+          if (process.env.JWT_SECRET && token) {
+            try {
+              const user = verify(token, process.env.JWT_SECRET);
+              return { db, loaders, logger: this.logger, user };
+            } catch (err) {
+              throw new Error('Invalid authentication token');
+            }
+          }
+          
+          return { db, loaders, logger: this.logger };
+        },
+        onConnect: (ctx: any) => {
+          const ip = ctx?.request?.socket?.remoteAddress || 'unknown';
+          
+          if (!checkSubscriptionRateLimit(ip)) {
+            throw new Error('Subscription rate limit exceeded');
+          }
+          
+          this.logger.info('WebSocket client connected', { ip });
+          return { ip, authenticated: !!ctx?.connectionParams?.token };
+        },
+        onSubscribe: (ctx: any, msg: any) => {
+          const ip = ctx?.ip || 'unknown';
+          
+          if (!checkEventRateLimit(ip)) {
+            throw new Error('Event rate limit exceeded');
+          }
+          
+          this.logger.info('WebSocket subscription started', { 
+            ip, 
+            query: msg?.payload?.query?.substring(0, 100),
+          });
         },
         onDisconnect: (ctx: any, code?: number, reason?: string) => {
           this.logger.info('WebSocket client disconnected', { code, reason });
+        },
+        onError: (ctx: any, msg: any, errors: any) => {
+          const ip = ctx?.ip || 'unknown';
+          this.logger.warn('WebSocket error', { ip, errors });
         },
       },
       wsServer
