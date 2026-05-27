@@ -1,0 +1,189 @@
+name: E2E Tests - Cross Browser
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    # Run nightly cross-browser tests
+    - cron: '0 2 * * *'
+
+jobs:
+  test-chromium:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: stellar_analytics_test
+          POSTGRES_USER: stellar_user
+          POSTGRES_PASSWORD: stellar_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.12.0
+
+      - name: Setup pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @stellar-analytics/e2e exec playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Build packages
+        run: pnpm build
+        env:
+          CI: true
+
+      - name: Start services
+        run: |
+          pnpm --filter @stellar-analytics/api dev &
+          pnpm --filter @stellar-analytics/frontend dev &
+          sleep 10
+        env:
+          DATABASE_URL: postgres://stellar_user:stellar_password@localhost:5432/stellar_analytics_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+
+      - name: Run E2E tests on ${{ matrix.browser }}
+        run: pnpm --filter @stellar-analytics/e2e test --project=${{ matrix.browser }} --reporter=list
+        env:
+          DATABASE_URL: postgres://stellar_user:stellar_password@localhost:5432/stellar_analytics_test
+          REDIS_URL: redis://localhost:6379
+          BASE_URL: http://localhost:5173
+          CI: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.browser }}
+          path: |
+            packages/e2e/test-results/
+            packages/e2e/playwright-report/
+          retention-days: 14
+
+  test-mobile:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        device: [Pixel-5, iPhone-12]
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: stellar_analytics_test
+          POSTGRES_USER: stellar_user
+          POSTGRES_PASSWORD: stellar_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.12.0
+
+      - name: Setup pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @stellar-analytics/e2e exec playwright install --with-deps chromium webkit
+
+      - name: Build packages
+        run: pnpm build
+        env:
+          CI: true
+
+      - name: Start services
+        run: |
+          pnpm --filter @stellar-analytics/api dev &
+          pnpm --filter @stellar-analytics/frontend dev &
+          sleep 10
+        env:
+          DATABASE_URL: postgres://stellar_user:stellar_password@localhost:5432/stellar_analytics_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+
+      - name: Run mobile tests on ${{ matrix.device }}
+        run: pnpm --filter @stellar-analytics/e2e test --project="Mobile ${{ matrix.device }}" --reporter=list
+        env:
+          DATABASE_URL: postgres://stellar_user:stellar_password@localhost:5432/stellar_analytics_test
+          REDIS_URL: redis://localhost:6379
+          BASE_URL: http://localhost:5173
+          CI: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-mobile-${{ matrix.device }}
+          path: |
+            packages/e2e/test-results/
+            packages/e2e/playwright-report/
+          retention-days: 14

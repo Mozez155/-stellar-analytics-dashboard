@@ -1,5 +1,6 @@
 packages:
   - "indexer"
   - "packages/api"
+  - "packages/e2e"
   - "frontend"
   - "shared"
