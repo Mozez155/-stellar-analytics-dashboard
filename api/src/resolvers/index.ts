@@ -25,7 +25,7 @@ export const resolvers = {
       params.push(sequenceCursor);
     }
     
-    sql += " ORDER BY sequence DESC LIMIT $1";
+    sql += " ORDER BY sequence DESC LIMIT $" + (params.length + 1);
     params.push(limit + 1); // One extra to check for next page
 
     const { rows } = await query(sql, params);
@@ -140,10 +140,10 @@ export const resolvers = {
 
   dailyTransactionCount: async ({ days = 7 }: { days?: number }) => {
     const { rows } = await query(
-      "SELECT DATE(created_at) as date, COUNT(*) as count FROM transactions WHERE created_at > NOW() - CAST($1 || ' days' AS INTERVAL) GROUP BY DATE(created_at) ORDER BY date DESC",
+      "SELECT DATE(created_at) as date, COUNT(*) as count FROM transactions WHERE created_at > NOW() - ($1 * INTERVAL '1 day') GROUP BY DATE(created_at) ORDER BY date DESC",
       [days]
     );
-    return rows.map(r => ({ date: r.date.toISOString().split('T')[0], count: parseInt(r.count, 10) }));
+    return rows.map(r => ({ date: new Date(r.date).toISOString().split('T')[0], count: parseInt(r.count, 10) }));
   }
 };
 
