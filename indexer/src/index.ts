@@ -11,7 +11,18 @@ import {
 } from "./transformer.js";
 import { writeIngestedData, type BatchMetrics } from "./loader.js";
 import { broadcastRealtimeUpdate } from "./websocket.js";
-import { STELLAR_NETWORKS, type StellarNetwork } from "@stellar-analytics/shared";
+import { validateConfig } from "./config.js";
+import { indexerLogger } from "./logger.js";
+import http from "http";
+
+// ---------------------------------------------------------------------------
+// Validate configuration on startup – fails fast with clear error messages
+// ---------------------------------------------------------------------------
+const config = validateConfig();
+
+const pool = config.databaseUrl
+  ? new Pool({ connectionString: config.databaseUrl })
+  : null;
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -335,7 +346,7 @@ async function main(): Promise<void> {
   }, POLL_INTERVAL_MS);
 }
 
-main().catch((error) => {
-  console.error("[indexer] fatal error:", error);
+main().catch((error: any) => {
+  indexerLogger.fatal({ error: error?.message ?? String(error) }, "Fatal error");
   process.exit(1);
 });

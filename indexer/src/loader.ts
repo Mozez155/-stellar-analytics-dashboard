@@ -195,7 +195,10 @@ export async function writeIngestedData(
     );
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("[loader] failed to write to database:", error);
+    loaderLogger.error(
+      { error: error?.message ?? String(error), ledgerSequence: data?.ledger?.sequence },
+      "Failed to write to database"
+    );
     throw error;
   } finally {
     client.release();
