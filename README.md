@@ -7,30 +7,30 @@ Monorepo scaffold for a Stellar blockchain analytics platform with a data pipeli
 ```text
 .
 +-- indexer/
-   +-- src/
-       +-- ingester.ts
-       +-- transformer.ts
-       +-- loader.ts
-       +-- websocket.ts
-       +-- index.ts
-       +-- database/schema.sql
+ï¿½   +-- src/
+ï¿½       +-- ingester.ts
+ï¿½       +-- transformer.ts
+ï¿½       +-- loader.ts
+ï¿½       +-- websocket.ts
+ï¿½       +-- index.ts
+ï¿½       +-- database/schema.sql
 +-- api/
-   +-- src/
-       +-- schema.ts
-       +-- resolvers/
-       +-- index.ts
+ï¿½   +-- src/
+ï¿½       +-- schema.ts
+ï¿½       +-- resolvers/
+ï¿½       +-- index.ts
 +-- frontend/
-   +-- src/
-       +-- components/
-       +-- hooks/
-       +-- pages/
-       +-- App.tsx
-       +-- main.tsx
+ï¿½   +-- src/
+ï¿½       +-- components/
+ï¿½       +-- hooks/
+ï¿½       +-- pages/
+ï¿½       +-- App.tsx
+ï¿½       +-- main.tsx
 +-- shared/
-   +-- src/
-       +-- config/networks.ts
-       +-- types/
-       +-- utils/
+ï¿½   +-- src/
+ï¿½       +-- config/networks.ts
+ï¿½       +-- types/
+ï¿½       +-- utils/
 +-- docker-compose.yml
 +-- package.json
 +-- pnpm-workspace.yaml
@@ -63,6 +63,14 @@ pnpm install
 ```bash
 docker compose up -d postgres redis
 ```
+
+### CI/CD
+
+This repository includes GitHub Actions workflows for:
+- PR validation with lint and build checks
+- automated E2E testing for feature branches
+- staging and production container deployment pipelines
+- manual rollback via workflow dispatch
 
 Backups are automated by the `postgres-backup` service when running full compose (`docker compose up -d`), and you can run backup operations manually:
 
