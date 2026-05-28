@@ -417,3 +417,17 @@ export const NETWORK_METRICS_SUBSCRIPTION = gql`
     }
   }
 `;
+
+export const NEW_OPERATION_SUBSCRIPTION = gql`
+  subscription OnNewOperation {
+    operationAdded {
+      id
+      type
+      transactionHash
+      transactionSuccessful
+      sourceAccount
+      createdAt
+      details
+    }
+  }
+`;

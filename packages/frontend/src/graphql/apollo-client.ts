@@ -15,10 +15,14 @@ import { createClient, type Client } from 'graphql-ws';
 // In production (same origin), derive from window.location.
 function getWsUrl(): string {
   if (typeof window === 'undefined') return 'ws://localhost:4000/graphql';
+  
+  const envUrl = import.meta.env.VITE_GRAPHQL_URL;
+  if (envUrl && envUrl.startsWith('http')) {
+    return envUrl.replace(/^http/, 'ws');
+  }
+
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  // Dev: API runs on :4000; prod: same host
-  const host =
-    import.meta.env.DEV ? 'localhost:4000' : window.location.host;
+  const host = import.meta.env.DEV ? 'localhost:4000' : window.location.host;
   return `${protocol}//${host}/graphql`;
 }
 
@@ -66,7 +70,7 @@ export const wsClient: Client = createClient({
     closed: () => {
       setStatus('disconnected');
     },
-    error: () => {
+    error: (err) => {
       reconnectAttempts++;
       setStatus('error');
     },
@@ -74,7 +78,8 @@ export const wsClient: Client = createClient({
 });
 
 // ── Links ─────────────────────────────────────────────────────────────────────
-const httpLink = createHttpLink({ uri: '/graphql' });
+const httpUri = import.meta.env.VITE_GRAPHQL_URL || '/graphql';
+const httpLink = createHttpLink({ uri: httpUri });
 
 const wsLink = new GraphQLWsLink(wsClient);
 
@@ -82,7 +87,7 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
   if (graphQLErrors) {
     graphQLErrors.forEach(({ message, locations, path }) =>
       console.warn(
-        `[GraphQL error] op=${operation.operationName} path=${path} msg=${message}`,
+        `[GraphQL error] op=${operation.operationName} path=${String(path)} msg=${message}`,
         locations
       )
     );
@@ -112,7 +117,10 @@ export const apolloClient = new ApolloClient({
           ledgers: {
             // Prepend new ledgers (highest sequence first)
             keyArgs: ['timeRange', 'pagination'],
-            merge(existing = { edges: [], pageInfo: {}, totalCount: 0 }, incoming) {
+            merge(
+              existing = { edges: [], pageInfo: {}, totalCount: 0 },
+              incoming: any
+            ) {
               // Deduplicate by cursor
               const existingCursors = new Set(
                 (existing.edges ?? []).map((e: any) => e.cursor)
@@ -128,7 +136,10 @@ export const apolloClient = new ApolloClient({
           },
           transactions: {
             keyArgs: ['filter', 'timeRange', 'pagination'],
-            merge(existing = { edges: [], pageInfo: {}, totalCount: 0 }, incoming) {
+            merge(
+              existing = { edges: [], pageInfo: {}, totalCount: 0 },
+              incoming: any
+            ) {
               const existingCursors = new Set(
                 (existing.edges ?? []).map((e: any) => e.cursor)
               );
@@ -142,10 +153,20 @@ export const apolloClient = new ApolloClient({
             },
           },
           operations: {
-            merge(existing = { edges: [], pageInfo: {}, totalCount: 0 }, incoming) {
+            keyArgs: ['type', 'filter', 'pagination'],
+            merge(
+              existing = { edges: [], pageInfo: {}, totalCount: 0 },
+              incoming: any
+            ) {
+              const existingCursors = new Set(
+                (existing.edges ?? []).map((e: any) => e.cursor)
+              );
+              const newEdges = (incoming.edges ?? []).filter(
+                (e: any) => !existingCursors.has(e.cursor)
+              );
               return {
                 ...incoming,
-                edges: [...(existing?.edges ?? []), ...incoming.edges],
+                edges: [...newEdges, ...(existing.edges ?? [])],
               };
             },
           },

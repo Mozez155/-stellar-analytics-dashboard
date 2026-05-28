@@ -31,7 +31,7 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
   if (graphQLErrors) {
     graphQLErrors.forEach(({ message, locations, path }) => {
       console.warn(
-        `[GraphQL error] op=${operation.operationName} path=${String(path)} msg=${message}`,
+        `[GraphQL error] op=${operation.operationName} path=${path ? String(path) : 'N/A'} msg=${message}`,
         locations
       );
     });
@@ -86,6 +86,25 @@ const cache = new InMemoryCache({
         // Prepend new transactions
         transactions: {
           keyArgs: ["filter", "timeRange", "pagination"],
+          merge(
+            existing = { edges: [], pageInfo: {}, totalCount: 0 },
+            incoming: any
+          ) {
+            const existingCursors = new Set(
+              (existing.edges ?? []).map((e: any) => e.cursor)
+            );
+            const newEdges = (incoming.edges ?? []).filter(
+              (e: any) => !existingCursors.has(e.cursor)
+            );
+            return {
+              ...incoming,
+              edges: [...newEdges, ...(existing.edges ?? [])],
+            };
+          },
+        },
+        // Prepend new operations
+        operations: {
+          keyArgs: ["type", "filter", "pagination"],
           merge(
             existing = { edges: [], pageInfo: {}, totalCount: 0 },
             incoming: any
