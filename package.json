@@ -14,8 +14,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,scss,html}\"",
     "test": "pnpm -r --if-present test",
     "prepare": "husky install",
-    "commitlint": "commitlint --edit \"$1\""
-    "test": "pnpm --filter @stellar-analytics/e2e test",
+    "commitlint": "commitlint --edit \"$1\"",
     "test:e2e": "pnpm --filter @stellar-analytics/e2e test",
     "test:e2e:ui": "pnpm --filter @stellar-analytics/e2e test:ui",
     "test:e2e:debug": "pnpm --filter @stellar-analytics/e2e test:debug",
@@ -23,7 +22,7 @@
     "test:e2e:chrome": "pnpm --filter @stellar-analytics/e2e test:chrome",
     "test:e2e:firefox": "pnpm --filter @stellar-analytics/e2e test:firefox",
     "test:e2e:webkit": "pnpm --filter @stellar-analytics/e2e test:webkit",
-    "test:e2e:codegen": "pnpm --filter @stellar-analytics/e2e codegen"
+    "test:e2e:codegen": "pnpm --filter @stellar-analytics/e2e codegen",
     "backup:run": "docker compose run --rm -e RUN_ONCE=true postgres-backup",
     "backup:verify": "docker compose run --rm postgres-backup /bin/sh /scripts/verify-latest-backup.sh",
     "backup:health": "docker compose run --rm postgres-backup /bin/sh /scripts/check-backup-health.sh",

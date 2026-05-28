@@ -10,6 +10,7 @@
  *   #41 – Circuit breaker wrapping all Horizon API calls
  *   #43 – Prometheus metrics for every significant operation
  *   #44 – Idempotency: skip already-processed ledgers
+ *   #36 – Dead letter queue for failed ledger recovery
  */
 
 import { Horizon } from '@stellar/stellar-sdk';
@@ -27,6 +28,7 @@ import {
   validateRecord,
   validateRecords,
 } from '../validation/schemas';
+import { dlq } from '../error-recovery/DeadLetterQueue';
 
 export class IndexerService {
   private stellarService: StellarService;
@@ -305,6 +307,9 @@ export class IndexerService {
         await this.processTransactionsForLedger(ledger.sequence, client);
       });
 
+      // ── #36 Remove from dead letter queue on success ───────────────────────────
+      dlq.remove(ledger.sequence);
+
       // ── Network metrics ───────────────────────────────────────────────────
       await this.updateNetworkMetrics(ledger);
 
@@ -324,6 +329,8 @@ export class IndexerService {
     } catch (error) {
       console.error(`[indexer] error processing ledger ${(rawLedger as any)?.sequence}:`, error);
       metrics.errorsTotal.inc({ type: 'process_ledger' });
+      // ── #36 Add to dead letter queue on failure ────────────────────────────────
+      dlq.push(ledger.sequence, error instanceof Error ? error.message : String(error));
       throw error;
     } finally {
       cycleEnd();

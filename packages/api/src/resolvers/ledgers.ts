@@ -3,6 +3,7 @@ import { db, CACHE_TTL } from '../database/connection';
 import { Connection, Edge, PageInfo } from '@stellar-analytics/shared';
 import { mapLedger } from '../utils/mappers';
 import type { ApiLoaders } from '../loaders';
+import { ValidationService } from '../services/validation';
 
 export const ledgerResolvers = {
   Query: {
@@ -15,10 +16,16 @@ export const ledgerResolvers = {
       context: any,
       info: GraphQLResolveInfo
     ): Promise<Connection<any>> => {
-      const { first = 20, after, last, before } = args.pagination || {};
+      const { first = 20, after, before } = args.pagination || {};
+
+      // Issue #31 – Validate pagination with comprehensive checks
+      const { first: validFirst } = ValidationService.validatePaginationFull(
+        args.pagination || {}
+      );
+
       const { startTime, endTime } = args.timeRange || {};
 
-      const cacheKey = `ledgers:${first}:${after || 'none'}:${before || 'none'}:${startTime || 'all'}:${endTime || 'all'}`;
+      const cacheKey = `ledgers:${validFirst}:${after || 'none'}:${before || 'none'}:${startTime || 'all'}:${endTime || 'all'}`;
 
       // Try cache first
       const cached = await db.cacheGet(cacheKey);
@@ -49,7 +56,7 @@ export const ledgerResolvers = {
         params.push(parseInt(before));
       }
 
-      const limit = Math.min(first || 20, 100);
+      const limit = Math.min(validFirst || 20, 100);
       const orderBy = after || !before ? 'ORDER BY sequence DESC' : 'ORDER BY sequence ASC';
 
       const query = `
@@ -83,27 +90,27 @@ export const ledgerResolvers = {
         node: mapLedger(ledger),
       }));
 
-// Create page info
-       const startCursor = edges.length > 0 ? edges[0].cursor : null;
-       const endCursor = edges.length > 0 ? edges[edges.length - 1].cursor : null;
-       
-       const hasNextPage = edges.length === limit;
-       const hasPreviousPage = after ? true : false;
+      // Create page info
+      const startCursor = edges.length > 0 ? edges[0].cursor : null;
+      const endCursor = edges.length > 0 ? edges[edges.length - 1].cursor : null;
+      
+      const hasNextPage = edges.length === limit;
+      const hasPreviousPage = after ? true : false;
 
-       const result = {
-         edges,
-         pageInfo: {
-           hasNextPage,
-           hasPreviousPage,
-           startCursor,
-           endCursor,
-         },
-         totalCount,
-       };
+      const result = {
+        edges,
+        pageInfo: {
+          hasNextPage,
+          hasPreviousPage,
+          startCursor,
+          endCursor,
+        },
+        totalCount,
+      };
 
-       // Cache the result
-       await db.cacheSet(cacheKey, result, CACHE_TTL.LEDGER_DATA);
-       return result;
+      // Cache the result
+      await db.cacheSet(cacheKey, result, CACHE_TTL.LEDGER_DATA);
+      return result;
     },
 
     ledger: async (

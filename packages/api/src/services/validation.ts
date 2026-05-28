@@ -99,6 +99,10 @@ function safeParse<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; d
 }
 
 export class ValidationService {
+  /**
+   * Validate pagination parameters
+   * Issue #31 – Add Pagination Validation
+   */
   static validatePagination(args: unknown) {
     const result = safeParse(PaginationValidationSchema, args);
     if (!result.success) {
@@ -107,6 +111,78 @@ export class ValidationService {
       });
     }
     return result.data;
+  }
+
+  /**
+   * Validate cursor format - must be a valid base64 encoded string
+   */
+  static validateCursor(cursor: string): { valid: boolean; error?: string } {
+    if (!cursor) return { valid: true };
+    try {
+      if (!/^[a-zA-Z0-9+/=]+$/.test(cursor)) {
+        return { valid: false, error: 'Cursor contains invalid characters' };
+      }
+      const decoded = Buffer.from(cursor, 'base64').toString('utf-8');
+      if (!/^\d+$/.test(decoded)) {
+        return { valid: false, error: 'Cursor must encode a numeric value' };
+      }
+      return { valid: true };
+    } catch {
+      return { valid: false, error: 'Invalid cursor encoding' };
+    }
+  }
+
+  /**
+   * Validate pagination with comprehensive checks
+   * Issue #31 – Validate max limit, default limit values, and cursor format
+   */
+  static validatePaginationFull(args: { first?: number; after?: string; last?: number; before?: string }): {
+    first: number;
+    after?: string;
+    last?: number;
+    before?: string;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+    let first = args.first ?? 20;
+    
+    const maxLimit = 100;
+    const defaultLimit = 20;
+
+    if (args.first !== undefined) {
+      if (args.first > maxLimit) {
+        errors.push(`Limit exceeds maximum of ${maxLimit}`);
+        first = maxLimit;
+      } else if (args.first < 1) {
+        errors.push('Limit must be at least 1');
+        first = defaultLimit;
+      }
+    }
+
+    if (args.after && !this.validateCursor(args.after).valid) {
+      errors.push('Invalid cursor format for "after" parameter');
+    }
+    if (args.before && !this.validateCursor(args.before).valid) {
+      errors.push('Invalid cursor format for "before" parameter');
+    }
+
+    if (args.after && args.before) {
+      errors.push('Cannot specify both "after" and "before" cursors');
+    }
+
+    if (errors.length > 0) {
+      throw new GraphQLError(`Invalid pagination parameters: ${errors.join(', ')}`, {
+        extensions: { code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    return {
+      first,
+      after: args.after,
+      last: args.last,
+      before: args.before,
+      errors: [],
+    };
   }
 
   static validateTimeRange(args: unknown) {
