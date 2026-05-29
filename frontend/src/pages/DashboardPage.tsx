@@ -6,10 +6,9 @@
  * Now includes paginated list views for ledgers and transactions.
  */
 import { TransactionsChart } from "../components/TransactionsChart";
-import { LedgersList } from "../components/LedgersList";
-import { TransactionsList } from "../components/TransactionsList";
+import { ExportControls } from "../components/ExportControls";
 import { useDashboardData } from "../hooks/useDashboardData";
-import { useState } from "react";
+import { statsToArray } from "../utils/exportUtils";
 
 export function DashboardPage() {
   const { data, loading, error, retry } = useDashboardData();
@@ -100,15 +99,24 @@ export function DashboardPage() {
           </p>
         </div>
 
-        {/* Soft refresh indicator while polling */}
-        {loading && (
-          <span
-            aria-label="Refreshing data"
-            style={{ fontSize: "12px", color: "#9ca3af" }}
-          >
-            ↻ Refreshing…
-          </span>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {/* Export controls for dashboard metrics */}
+          <ExportControls 
+            data={statsToArray(stats)} 
+            baseFilename="dashboard-metrics"
+            disabled={loading}
+          />
+          
+          {/* Soft refresh indicator while polling */}
+          {loading && (
+            <span
+              aria-label="Refreshing data"
+              style={{ fontSize: "12px", color: "#9ca3af" }}
+            >
+              ↻ Refreshing…
+            </span>
+          )}
+        </div>
       </header>
 
       {/* Tab Navigation */}

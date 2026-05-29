@@ -7,6 +7,7 @@
  */
 import { useQuery } from "@apollo/client";
 import { NETWORK_METRICS_QUERY } from "../graphql/queries";
+import { ExportControls } from "./ExportControls";
 
 interface MetricPoint {
   timestamp: string;
@@ -107,30 +108,39 @@ export function TransactionsChart() {
 
   return (
     <section className="card">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
         <h3 style={{ margin: 0, fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6b7280" }}>
           Transaction Volume (24h)
         </h3>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {loading && (
-            <span style={{ fontSize: "11px", color: "#9ca3af" }}>↻ Updating…</span>
-          )}
-          <button
-            onClick={() => refetch()}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          {/* Export controls for transaction metrics */}
+          <ExportControls 
+            data={metrics} 
+            baseFilename="transaction-metrics"
             disabled={loading}
-            aria-label="Refresh chart"
-            style={{
-              background: "transparent",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              padding: "4px 8px",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: "12px",
-              color: "#6b7280",
-            }}
-          >
-            ↻
-          </button>
+          />
+          
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {loading && (
+              <span style={{ fontSize: "11px", color: "#9ca3af" }}>↻ Updating…</span>
+            )}
+            <button
+              onClick={() => refetch()}
+              disabled={loading}
+              aria-label="Refresh chart"
+              style={{
+                background: "transparent",
+                border: "1px solid #d1d5db",
+                borderRadius: "6px",
+                padding: "4px 8px",
+                cursor: loading ? "not-allowed" : "pointer",
+                fontSize: "12px",
+                color: "#6b7280",
+              }}
+            >
+              ↻
+            </button>
+          </div>
         </div>
       </div>
 
