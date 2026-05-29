@@ -206,8 +206,6 @@ class ApiServer {
           db,
           loaders: createLoaders(),
           logger: this.logger,
-          loaders,
-          logger,
           authService,
         };
       },
@@ -265,14 +263,6 @@ class ApiServer {
     useServer(
       {
         schema,
-        context: async () => ({
-          db,
-          loaders: createLoaders(),
-          logger: this.logger,
-        }),
-        onConnect: () => {
-          this.logger.info('WebSocket client connected');
-          return true;
         context: async (ctx: any, msg: any, args: any) => {
           const connectionParams = ctx?.connectionParams || {};
           const token = connectionParams?.token || msg?.payload?.headers?.authorization?.replace('Bearer ', '');
@@ -280,13 +270,13 @@ class ApiServer {
           if (process.env.JWT_SECRET && token) {
             try {
               const user = verify(token, process.env.JWT_SECRET);
-              return { db, loaders, logger: this.logger, user };
+              return { db, loaders: createLoaders(), logger: this.logger, user };
             } catch (err) {
               throw new Error('Invalid authentication token');
             }
           }
           
-          return { db, loaders, logger: this.logger };
+          return { db, loaders: createLoaders(), logger: this.logger };
         },
         onConnect: (ctx: any) => {
           const ip = ctx?.request?.socket?.remoteAddress || 'unknown';
