@@ -6,10 +6,12 @@
  * Now includes paginated list views for ledgers and transactions.
  */
 import { TransactionsChart } from "../components/TransactionsChart";
-import { LedgersList } from "../components/LedgersList";
-import { TransactionsList } from "../components/TransactionsList";
+import { ExportControls } from "../components/ExportControls";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { useDashboardData } from "../hooks/useDashboardData";
+import { statsToArray } from "../utils/exportUtils";
+import { LedgersList } from "../components/LedgersList";
+import { TransactionsList } from "../components/TransactionsList";
 import { useState } from "react";
 
 export function DashboardPage() {
@@ -102,21 +104,30 @@ export function DashboardPage() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {/* Theme toggle */}
+          <ThemeToggle />
+          
+          {/* Export controls for dashboard metrics */}
+          <ExportControls 
+            data={statsToArray(stats)} 
+            baseFilename="dashboard-metrics"
+            disabled={loading}
+          />
+          
           {/* Soft refresh indicator while polling */}
           {loading && (
             <span
               aria-label="Refreshing data"
-              style={{ fontSize: "12px", color: "var(--color-text-muted)" }}
+              style={{ fontSize: "12px", color: "var(--color-text-tertiary)" }}
             >
               ↻ Refreshing…
             </span>
           )}
-          <ThemeToggle />
         </div>
       </header>
 
       {/* Tab Navigation */}
-      <div style={{ marginBottom: "24px", borderBottom: "1px solid var(--color-border-light)" }}>
+      <div style={{ marginBottom: "24px", borderBottom: "1px solid #e5e7eb" }}>
         <div style={{ display: "flex", gap: "24px" }}>
           <button
             onClick={() => setActiveTab("dashboard")}
@@ -124,11 +135,11 @@ export function DashboardPage() {
               padding: "8px 0",
               border: "none",
               background: "transparent",
-              borderBottom: activeTab === "dashboard" ? "2px solid var(--color-primary)" : "2px solid transparent",
+              borderBottom: activeTab === "dashboard" ? "2px solid #3b82f6" : "2px solid transparent",
               cursor: "pointer",
               fontSize: "14px",
               fontWeight: activeTab === "dashboard" ? 600 : 400,
-              color: activeTab === "dashboard" ? "var(--color-primary)" : "var(--color-text-secondary)",
+              color: activeTab === "dashboard" ? "#3b82f6" : "#6b7280",
             }}
           >
             Dashboard
@@ -139,11 +150,11 @@ export function DashboardPage() {
               padding: "8px 0",
               border: "none",
               background: "transparent",
-              borderBottom: activeTab === "ledgers" ? "2px solid var(--color-primary)" : "2px solid transparent",
+              borderBottom: activeTab === "ledgers" ? "2px solid #3b82f6" : "2px solid transparent",
               cursor: "pointer",
               fontSize: "14px",
               fontWeight: activeTab === "ledgers" ? 600 : 400,
-              color: activeTab === "ledgers" ? "var(--color-primary)" : "var(--color-text-secondary)",
+              color: activeTab === "ledgers" ? "#3b82f6" : "#6b7280",
             }}
           >
             Ledgers
@@ -154,11 +165,11 @@ export function DashboardPage() {
               padding: "8px 0",
               border: "none",
               background: "transparent",
-              borderBottom: activeTab === "transactions" ? "2px solid var(--color-primary)" : "2px solid transparent",
+              borderBottom: activeTab === "transactions" ? "2px solid #3b82f6" : "2px solid transparent",
               cursor: "pointer",
               fontSize: "14px",
               fontWeight: activeTab === "transactions" ? 600 : 400,
-              color: activeTab === "transactions" ? "var(--color-primary)" : "var(--color-text-secondary)",
+              color: activeTab === "transactions" ? "#3b82f6" : "#6b7280",
             }}
           >
             Transactions
@@ -182,7 +193,7 @@ export function DashboardPage() {
             fontSize: "13px",
           }}
         >
-          <span style={{ color: "var(--color-warning)" }}>
+          <span style={{ color: "var(--color-warning-text)" }}>
             Could not refresh data: {error.message}
           </span>
           <button
@@ -193,7 +204,7 @@ export function DashboardPage() {
               borderRadius: "6px",
               padding: "4px 10px",
               cursor: "pointer",
-              color: "var(--color-warning)",
+              color: "var(--color-warning-text)",
               fontSize: "12px",
             }}
           >
@@ -208,7 +219,7 @@ export function DashboardPage() {
           <div className="grid">
             {metrics.map(({ label, value }) => (
               <article key={label} className="card">
-                <h3 style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-secondary)" }}>
+                <h3 style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6b7280" }}>
                   {label}
                 </h3>
                 <p style={{ margin: 0, fontSize: "24px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
