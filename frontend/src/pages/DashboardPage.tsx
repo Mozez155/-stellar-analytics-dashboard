@@ -3,6 +3,7 @@
  *
  * Replaces stub data with real API calls via useDashboardData.
  * Handles loading states, API errors, and retry logic.
+ * Now includes paginated list views for ledgers and transactions.
  */
 import { TransactionsChart } from "../components/TransactionsChart";
 import { ExportControls } from "../components/ExportControls";
@@ -11,6 +12,7 @@ import { statsToArray } from "../utils/exportUtils";
 
 export function DashboardPage() {
   const { data, loading, error, retry } = useDashboardData();
+  const [activeTab, setActiveTab] = useState<"dashboard" | "ledgers" | "transactions">("dashboard");
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (loading && !data) {
@@ -117,6 +119,57 @@ export function DashboardPage() {
         </div>
       </header>
 
+      {/* Tab Navigation */}
+      <div style={{ marginBottom: "24px", borderBottom: "1px solid #e5e7eb" }}>
+        <div style={{ display: "flex", gap: "24px" }}>
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            style={{
+              padding: "8px 0",
+              border: "none",
+              background: "transparent",
+              borderBottom: activeTab === "dashboard" ? "2px solid #3b82f6" : "2px solid transparent",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: activeTab === "dashboard" ? 600 : 400,
+              color: activeTab === "dashboard" ? "#3b82f6" : "#6b7280",
+            }}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab("ledgers")}
+            style={{
+              padding: "8px 0",
+              border: "none",
+              background: "transparent",
+              borderBottom: activeTab === "ledgers" ? "2px solid #3b82f6" : "2px solid transparent",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: activeTab === "ledgers" ? 600 : 400,
+              color: activeTab === "ledgers" ? "#3b82f6" : "#6b7280",
+            }}
+          >
+            Ledgers
+          </button>
+          <button
+            onClick={() => setActiveTab("transactions")}
+            style={{
+              padding: "8px 0",
+              border: "none",
+              background: "transparent",
+              borderBottom: activeTab === "transactions" ? "2px solid #3b82f6" : "2px solid transparent",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: activeTab === "transactions" ? 600 : 400,
+              color: activeTab === "transactions" ? "#3b82f6" : "#6b7280",
+            }}
+          >
+            Transactions
+          </button>
+        </div>
+      </div>
+
       {/* Soft error banner (partial data available) */}
       {error && data && (
         <div
@@ -153,22 +206,35 @@ export function DashboardPage() {
         </div>
       )}
 
-      <div className="grid">
-        {metrics.map(({ label, value }) => (
-          <article key={label} className="card">
-            <h3 style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6b7280" }}>
-              {label}
-            </h3>
-            <p style={{ margin: 0, fontSize: "24px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-              {value}
-            </p>
-          </article>
-        ))}
-      </div>
+      {/* Tab Content */}
+      {activeTab === "dashboard" && (
+        <>
+          <div className="grid">
+            {metrics.map(({ label, value }) => (
+              <article key={label} className="card">
+                <h3 style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6b7280" }}>
+                  {label}
+                </h3>
+                <p style={{ margin: 0, fontSize: "24px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                  {value}
+                </p>
+              </article>
+            ))}
+          </div>
 
-      <div className="grid" style={{ marginTop: "24px" }}>
-        <TransactionsChart />
-      </div>
+          <div className="grid" style={{ marginTop: "24px" }}>
+            <TransactionsChart />
+          </div>
+        </>
+      )}
+
+      {activeTab === "ledgers" && (
+        <LedgersList />
+      )}
+
+      {activeTab === "transactions" && (
+        <TransactionsList />
+      )}
     </main>
   );
 }

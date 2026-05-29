@@ -1,12 +1,12 @@
 import { GraphQLResolveInfo } from 'graphql';
-import { db } from '../database/connection';
+import { db, CACHE_TTL } from '../database/connection';
 import { mapOperation, mapTransaction } from '../utils/mappers';
 import type { ApiLoaders } from '../loaders';
+import { ValidationService } from '../services/validation';
 
 interface ResolverContext {
   loaders: ApiLoaders;
 }
-import { db, CACHE_TTL } from '../database/connection';
 
 export const transactionResolvers = {
   Query: {
@@ -23,13 +23,16 @@ export const transactionResolvers = {
           memoType?: string;
         };
       },
-      _context: ResolverContext,
+      context: ResolverContext,
       _info: GraphQLResolveInfo
     ) => {
       const { first = 20, after, before } = args.pagination || {};
-      if (args.pagination) {
-        ValidationService.validatePagination(args.pagination);
-      }
+
+      // Issue #31 – Validate pagination with comprehensive checks
+      const { first: validFirst } = ValidationService.validatePaginationFull(
+        args.pagination || {}
+      );
+
       if (args.timeRange) {
         ValidationService.validateTimeRange(args.timeRange);
       }
@@ -37,11 +40,10 @@ export const transactionResolvers = {
         ValidationService.validateTransactionFilter(args.filter);
       }
 
-      const { first = 20, after, last, before } = args.pagination || {};
       const { startTime, endTime } = args.timeRange || {};
       const { successful, minFee, maxFee, hasMemo, memoType } = args.filter || {};
 
-      const cacheKey = `transactions:${first}:${after || 'none'}:${before || 'none'}:${startTime || 'all'}:${endTime || 'all'}:${successful ?? 'all'}:${minFee ?? 'none'}:${maxFee ?? 'none'}`;
+      const cacheKey = `transactions:${validFirst}:${after || 'none'}:${before || 'none'}:${startTime || 'all'}:${endTime || 'all'}:${successful ?? 'all'}:${minFee ?? 'none'}:${maxFee ?? 'none'}`;
 
       // Try cache first
       const cached = await db.cacheGet(cacheKey);
@@ -92,7 +94,7 @@ export const transactionResolvers = {
         params.push(before);
       }
 
-      const limit = Math.min(first || 20, 100);
+      const limit = Math.min(validFirst || 20, 100);
       const orderBy = after || !before ? 'ORDER BY created_at DESC' : 'ORDER BY created_at ASC';
 
       const query = `
@@ -151,8 +153,6 @@ export const transactionResolvers = {
       context: ResolverContext,
       _info: GraphQLResolveInfo
     ) => {
-      const transaction = await context.loaders.transactionLoader.load(args.hash);
-      return transaction ? mapTransaction(transaction) : null;
       const cacheKey = `transaction:${args.hash}`;
 
       // Try cache first
