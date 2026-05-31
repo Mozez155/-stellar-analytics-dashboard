@@ -136,8 +136,24 @@ export class DatabaseConnection {
     const client = await this.getClient();
     try {
       const result = await client.query(text, params);
-      recordQueryExecution(text, performance.now() - startedAt, result.rowCount, this.logger);
+      const durationMs = Math.round((performance.now() - startedAt) * 100) / 100;
+      this.logger.debug('db:query', {
+        sql: text.replace(/\s+/g, ' ').trim().slice(0, 200),
+        paramCount: params?.length ?? 0,
+        durationMs,
+        rowCount: result.rowCount ?? 0,
+      });
+      recordQueryExecution(text, durationMs, result.rowCount ?? undefined, this.logger);
       return result.rows;
+    } catch (error) {
+      const durationMs = Math.round((performance.now() - startedAt) * 100) / 100;
+      this.logger.error('db:query:error', {
+        sql: text.replace(/\s+/g, ' ').trim().slice(0, 200),
+        paramCount: params?.length ?? 0,
+        durationMs,
+        error,
+      });
+      throw error;
     } finally {
       client.release();
     }
