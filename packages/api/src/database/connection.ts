@@ -136,7 +136,7 @@ export class DatabaseConnection {
     const client = await this.getClient();
     try {
       const result = await client.query(text, params);
-      recordQueryExecution(text, performance.now() - startedAt, result.rowCount, this.logger);
+      recordQueryExecution(text, performance.now() - startedAt, result.rowCount ?? undefined, this.logger);
       return result.rows;
     } finally {
       client.release();
@@ -205,7 +205,7 @@ export class DatabaseConnection {
 
   // Cache monitoring
   public async getCacheStats(): Promise<{ keys: number; memory: string }> {
-    const keys = await this.redis.dbsize();
+    const keys = await this.redis.dbSize();
     const info = await this.redis.info('memory');
     return { keys, memory: info || 'unknown' };
   }
