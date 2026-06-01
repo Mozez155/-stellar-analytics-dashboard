@@ -19,5 +19,12 @@ module.exports = {
     node: true,
     es2022: true,
   },
-  ignorePatterns: ['dist/', 'node_modules/', '*.js'],
+  ignorePatterns: ['dist/', 'node_modules/', 'packages/*/dist/'],
+  overrides: [
+    {
+      files: ['*.d.ts', '.eslintrc.js', 'jest.config.js'],
+      parserOptions: { project: null },
+      rules: { '@typescript-eslint/explicit-function-return-type': 'off' },
+    },
+  ],
 };
