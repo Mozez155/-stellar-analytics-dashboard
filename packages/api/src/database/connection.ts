@@ -187,6 +187,22 @@ export class DatabaseConnection {
     return result === 1;
   }
 
+  public async cacheDelPattern(pattern: string): Promise<number> {
+    const keys = await this.redis.keys(pattern);
+    if (keys.length === 0) {
+      return 0;
+    }
+    return await this.redis.del(keys);
+  }
+
+  public async cacheGetTTL(key: string): Promise<number> {
+    return await this.redis.ttl(key);
+  }
+
+  public async cacheRefresh(key: string, ttl: number): Promise<void> {
+    await this.redis.expire(key, ttl);
+  }
+
   // Cache monitoring
   public async getCacheStats(): Promise<{ keys: number; memory: string }> {
     const keys = await this.redis.dbsize();
